@@ -1,0 +1,43 @@
+<?php
+require_once __DIR__ . '/config/db.php';
+$user = current_user();
+if ($user) { header('Location: profile.php'); exit; }
+
+$error = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $name = trim($_POST['name'] ?? '');
+    $email = strtolower(trim($_POST['email'] ?? ''));
+    $password = $_POST['password'] ?? '';
+    if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($password) < 8) {
+        $error = 'Проверьте имя, email и пароль (не менее 8 символов).';
+    } else {
+        $check = $pdo->prepare('SELECT id FROM users WHERE email = ?');
+        $check->execute([$email]);
+        if ($check->fetch()) {
+            $error = 'Пользователь с таким email уже зарегистрирован.';
+        } else {
+            $stmt = $pdo->prepare('INSERT INTO users (name,email,password) VALUES (?,?,?)');
+            $stmt->execute([$name,$email,password_hash($password,PASSWORD_DEFAULT)]);
+            $_SESSION['user'] = ['id'=>(int)$pdo->lastInsertId(),'name'=>$name,'email'=>$email,'role'=>'user'];
+            header('Location: profile.php'); exit;
+        }
+    }
+}
+require_once __DIR__ . '/includes/header.php';
+?>
+    <section class="auth-wrap">
+        <div class="auth-card">
+            <span class="eyebrow">WELCOME TO ILLUMINOS</span>
+            <h1>Создай свой<br><span>аккаунт.</span></h1>
+            <p class="muted">Открой для себя истории без границ.</p>
+            <?php if($error): ?><div class="alert"><?=e($error)?></div><?php endif; ?>
+            <form method="post" class="auth-form">
+                <label>Имя<input name="name" required maxlength="100" placeholder="Как к тебе обращаться?"></label>
+                <label>Email<input type="email" name="email" required placeholder="name@example.com"></label>
+                <label>Пароль<input type="password" name="password" required minlength="8" placeholder="Не менее 8 символов"></label>
+                <button class="btn">Зарегистрироваться ↗</button>
+            </form>
+            <p class="auth-switch">Уже есть аккаунт? <a href="login.php">Войти</a></p>
+        </div>
+    </section>
+<?php require_once __DIR__ . '/includes/footer.php'; ?>

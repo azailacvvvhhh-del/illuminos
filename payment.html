@@ -1,0 +1,57 @@
+<?php
+require_once __DIR__ . '/config/db.php';
+$user = current_user();
+$error = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $user) {
+    $plans = ['Старт'=>199,'Плюс'=>399,'Премиум'=>599];
+    $plan = $_POST['plan'] ?? 'Плюс';
+    if (isset($plans[$plan])) {
+        $stmt = $pdo->prepare('INSERT INTO subscriptions (user_id,plan_name,price) VALUES (?,?,?)');
+        $stmt->execute([$user['id'],$plan,$plans[$plan]]);
+        $pdo->prepare("UPDATE users SET role='subscriber' WHERE id=?")->execute([$user['id']]);
+        $_SESSION['user']['role'] = 'subscriber';
+        header('Location: profile.php?notice=subscribed'); exit;
+    }
+}
+
+$plans = [
+    ['Старт', 199, 'HD качество', '1 устройство', 'Каталог фильмов'],
+    ['Плюс', 399, 'Full HD качество', '2 устройства', 'Фильмы и сериалы'],
+    ['Премиум', 599, '4K качество', '4 устройства', 'Весь каталог + новинки']
+];
+
+require_once __DIR__ . '/includes/header.php';
+?>
+    <section class="page-head">
+        <span class="eyebrow">ТВОЙ ДОСТУП К ИСТОРИЯМ</span>
+        <h1>Выбери свой <span>ритм.</span></h1>
+        <p>Простые тарифы — больше впечатлений.</p>
+    </section>
+    
+    <section class="section pricing-grid">
+        <?php foreach($plans as $p): ?>
+            <article class="plan-card <?=$p[0]==='Плюс'?'plan-featured':''?>">
+                <?php if($p[0]==='Плюс'): ?><span class="plan-label">ПОПУЛЯРНЫЙ</span><?php endif; ?>
+                <h2><?=$p[0]?></h2>
+                <p class="muted">Для комфортного просмотра</p>
+                <div class="price"><?=$p[1]?> <small>₸ / месяц</small></div>
+                <ul>
+                    <li>✓ <?=$p[2]?></li>
+                    <li>✓ <?=$p[3]?></li>
+                    <li>✓ <?=$p[4]?></li>
+                    <li>✓ Отмена в любое время</li>
+                </ul>
+                <?php if($user): ?>
+                    <form method="post">
+                        <input type="hidden" name="plan" value="<?=e($p[0])?>">
+                        <button class="btn <?=$p[0]==='Плюс'?'':'btn-ghost'?>">Выбрать тариф ↗</button>
+                    </form>
+                <?php else: ?>
+                    <a href="login.php" class="btn <?=$p[0]==='Плюс'?'':'btn-ghost'?>">Войти для покупки ↗</a>
+                <?php endif; ?>
+            </article>
+        <?php endforeach; ?>
+    </section>
+    <p class="fine-print">* Учебная демонстрация: при выборе тарифа создаётся запись о подписке. Реальное списание средств не производится.</p>
+<?php require_once __DIR__ . '/includes/footer.php'; ?>

@@ -1,0 +1,55 @@
+<?php
+function content_card(array $item, PDO $pdo, ?array $user): void {
+    // Градиенты на случай, если картинки нет
+    $colors = ['Фантастика'=>'poster-violet','Триллер'=>'poster-blue','Драма'=>'poster-pink','Комедия'=>'poster-orange','Ужасы'=>'poster-dark','Приключения'=>'poster-cyan','Детектив'=>'poster-green'];
+    $cls = $colors[$item['genre']] ?? 'poster-violet';
+
+    // ТУТ ПИШЕМ ИМЕНА КАРТИНОК (в точности как названия фильмов)
+    $posters = [
+        'Грань будущего' => 'gran.jpg',
+        'Орбита 9'       => 'orbita.jpg',
+        'После сигнала'  => 'posle.jpg',
+        'Тихий город'    => 'tihiy.jpg',
+        'Параллель'      => 'parallel.jpg',
+        'Код памяти'     => 'kod.jpg',
+        'Северный ветер' => 'sever.jpg',
+        'Последний этаж' => 'etazh.jpg',
+        'Летний маршрут' => 'summer.jpg', 
+        'Ночная смена'   => 'night.jpg' 
+    ];
+
+    // Если для фильма есть картинка в списке — берем её
+    $imgName = $posters[$item['title']] ?? null;
+    ?>
+    
+    <article class="movie-card">
+      <!-- Если картинка есть, ставим её фоном -->
+      <a class="poster <?=e($cls)?> <?=$imgName?'has-image':''?>" href="detail.php?id=<?=(int)$item['id']?>"
+         <?php if($imgName): ?>style="background-image:url('assets/posters/<?=$imgName?>')"<?php endif; ?>>
+        
+        <!-- Если картинки нет, показываем текст -->
+        <?php if(!$imgName): ?>
+          <span class="poster-kicker"><?=e($item['content_type']==='series'?'SERIES':'MOVIE')?></span>
+          <strong><?=e($item['title'])?></strong>
+          <span class="poster-bottom"><?=e($item['genre'])?> · <?=e($item['year'])?></span>
+          <span class="poster-orb"></span>
+        <?php endif; ?>
+      </a>
+      
+      <div class="card-info">
+        <div>
+            <a class="card-title" href="detail.php?id=<?=(int)$item['id']?>"><?=e($item['title'])?></a>
+            <small><?=e($item['genre'])?> · <?=e($item['year'])?></small>
+        </div>
+        <span class="rating">★ <?=e($item['rating'])?></span>
+      </div>
+      
+      <?php if ($user): ?>
+      <form method="post" action="favorite_action.php" class="favorite-form">
+          <input type="hidden" name="content_id" value="<?=(int)$item['id']?>">
+          <button class="icon-btn" title="В избранное">♡</button>
+      </form>
+      <?php endif; ?>
+    </article>
+    <?php
+}

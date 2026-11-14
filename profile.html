@@ -1,0 +1,61 @@
+<?php
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/includes/content_card.php';
+require_login();
+$user = current_user();
+$notice = $_GET['notice'] ?? '';
+
+$fav = $pdo->prepare('SELECT c.* FROM favorites f JOIN content c ON c.id=f.content_id WHERE f.user_id=? ORDER BY f.created_at DESC'); 
+$fav->execute([$user['id']]);
+$favs = $fav->fetchAll();
+
+$history = $pdo->prepare('SELECT c.*, MAX(h.viewed_at) last_view FROM watch_history h JOIN content c ON c.id=h.content_id WHERE h.user_id=? GROUP BY c.id ORDER BY last_view DESC LIMIT 8'); 
+$history->execute([$user['id']]);
+$hist = $history->fetchAll();
+
+$sub = $pdo->prepare("SELECT * FROM subscriptions WHERE user_id=? AND status='active' ORDER BY created_at DESC LIMIT 1"); 
+$sub->execute([$user['id']]); 
+$subscription = $sub->fetch();
+
+require_once __DIR__ . '/includes/header.php';
+?>
+    <section class="page-head">
+        <span class="eyebrow">ЛИЧНОЕ ПРОСТРАНСТВО</span>
+        <h1>Привет, <span><?=e($user['name'])?>.</span></h1>
+        <p>Твоя коллекция и история просмотров в одном месте.</p>
+    </section>
+    
+    <?php if($notice === 'subscribed'): ?>
+        <div class="notice">Демонстрационная подписка успешно активирована.</div>
+    <?php endif; ?>
+    
+    <section class="section account-summary">
+        <div class="summary-card">
+            <small>АККАУНТ</small>
+            <b><?=e($user['email'])?></b>
+            <span>Роль: <?=e($user['role'])?></span>
+        </div>
+        <div class="summary-card">
+            <small>ПОДПИСКА</small>
+            <b><?=$subscription?e($subscription['plan_name']):'Бесплатная'?></b>
+            <span><?=$subscription?'Активна':'Можно выбрать тариф'?></span>
+        </div>
+        <div class="summary-card">
+            <small>ВОЗМОЖНОСТИ</small>
+            <b>Твоя библиотека</b>
+            <span>Избранное и история</span>
+        </div>
+    </section>
+    
+    <section class="section">
+        <div class="section-heading"><h2>Избранное</h2></div>
+        <div class="movie-grid"><?php foreach($favs as $it) content_card($it,$pdo,$user); ?></div>
+        <?php if(!$favs): ?><p class="muted">Здесь появятся фильмы и сериалы, которые ты сохранишь.</p><?php endif; ?>
+    </section>
+    
+    <section class="section">
+        <div class="section-heading"><h2>Недавно смотрели</h2></div>
+        <div class="movie-grid"><?php foreach($hist as $it) content_card($it,$pdo,$user); ?></div>
+        <?php if(!$hist): ?><p class="muted">История просмотров пока пуста. Открой страницу любого фильма.</p><?php endif; ?>
+    </section>
+<?php require_once __DIR__ . '/includes/footer.php'; ?>

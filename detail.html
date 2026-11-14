@@ -1,0 +1,135 @@
+<?php
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/includes/content_card.php';
+$user = current_user();
+
+$id = (int)($_GET['id'] ?? 0);
+$stmt = $pdo->prepare('SELECT * FROM content WHERE id=?'); 
+$stmt->execute([$id]); 
+$item = $stmt->fetch();
+
+// Если постера нет в базе данных, берем его из нашего массива
+if ($item && empty($item['poster'])) {
+    $posters = [
+        'Грань будущего' => 'gran.jpg',
+        'Орбита 9'       => 'orbita.jpg',
+        'После сигнала'  => 'posle.jpg',
+        'Тихий город'    => 'tihiy.jpg',
+        'Параллель'      => 'parallel.jpg',
+        'Код памяти'     => 'kod.jpg',
+        'Северный ветер' => 'sever.jpg',
+        'Последний этаж' => 'etazh.jpg',
+        'Летний маршрут' => 'summer.jpg',
+        'Ночная смена'   => 'night.jpg'
+    ];
+    $item['poster'] = $posters[$item['title']] ?? null;
+}
+
+require_once __DIR__ . '/includes/header.php';
+
+if (!$item) { 
+    echo '<section class="empty-state">Материал не найден.</section>'; 
+}
+else {
+    // Добавляем в историю просмотров
+    if ($user) { 
+        $pdo->prepare('INSERT INTO watch_history (user_id,content_id) VALUES (?,?)')->execute([$user['id'],$id]); 
+    }
+    
+    // Похожие материалы
+    $related = $pdo->prepare('SELECT * FROM content WHERE genre=? AND id<>? LIMIT 4'); 
+    $related->execute([$item['genre'],$id]);
+    
+    // Эпизоды для сериалов
+    $episodes = $pdo->prepare('SELECT * FROM episodes WHERE content_id=? ORDER BY season_number,episode_number'); 
+    $episodes->execute([$id]);
+
+    // Проверяем, есть ли картинка для фона
+    $bgStyle = '';
+    if (!empty($item['poster']) && is_file(__DIR__.'/assets/posters/'.$item['poster'])) {
+        $bgStyle = 'style="background-image: url(\'assets/posters/'.e($item['poster']).'\');"';
+    }
+    ?>
+    
+    <!-- Шапка фильма с фоновым баннером -->
+    <section class="detail-hero <?=$bgStyle ? 'has-bg' : ''?>" <?=$bgStyle?>>
+        
+        <!-- Большой постер справа -->
+        <?php if(!empty($item['poster']) && is_file(__DIR__.'/assets/posters/'.$item['poster'])): ?>
+            <div class="detail-poster">
+                <img src="assets/posters/<?=e($item['poster'])?>" alt="<?=e($item['title'])?>">
+            </div>
+        <?php endif; ?>
+
+        <span class="eyebrow"><?=e(strtoupper($item['content_type']==='series'?'СЕРИАЛ':'ФИЛЬМ'))?> · <?=e($item['genre'])?></span>
+        <h1><?=e($item['title'])?></h1>
+        <div class="detail-meta">
+            <span>★ <?=e($item['rating'])?></span>
+            <span><?=e($item['year'])?></span>
+            <span><?=e($item['director'])?></span>
+        </div>
+        <p><?=e($item['description'])?></p>
+        
+        <div class="hero-actions">
+            <!-- Кнопка трейлера с плавным скроллом -->
+            <button class="btn" onclick="document.getElementById('trailer').scrollIntoView({behavior: 'smooth'});">▶ Смотреть трейлер</button>
+            
+            <?php if($user): ?>
+                <!-- Форма избранного с AJAX-скриптом -->
+                <form method="post" action="favorite_action.php" id="fav-form-<?=$id?>" onsubmit="toggleFavorite(event, <?=$id?>)">
+                    <input type="hidden" name="content_id" value="<?=$id?>">
+                    <button type="submit" class="btn btn-ghost" id="fav-btn-<?=$id?>">
+                        <?= is_favorite($pdo, (int)$user['id'], $id) ? '♥ В избранном' : '♡ В избранное' ?>
+                    </button>
+                </form>
+            <?php else: ?>
+                <a class="btn btn-ghost" href="login.php">♡ В избранное</a>
+            <?php endif; ?>
+        </div>
+    </section>
+    
+    <!-- Основной контент -->
+    <section class="section detail-columns">
+        <div>
+            <h2>О проекте</h2>
+            <p class="muted"><?=e($item['description'])?></p>
+            <p><b>Режиссёр:</b> <?=e($item['director'])?></p>
+            <p><b>В ролях:</b> <?=e($item['cast_list'])?></p>
+            
+            <?php if($item['content_type']==='series'): ?>
+                <h2>Сезоны и эпизоды</h2>
+                <?php foreach($episodes as $ep): ?>
+                    <div class="episode">Сезон <?=e($ep['season_number'])?> · Серия <?=e($ep['episode_number'])?> — <?=e($ep['title'])?></div>
+                <?php endforeach; if(!$episodes) echo '<p class="muted">Список эпизодов пока не добавлен.</p>'; ?>
+            <?php endif; ?>
+        </div>
+        
+        <!-- Трейлер -->
+        <div id="trailer" class="trailer-box" style="padding: 0; overflow: hidden; background: #000;">
+            <?php if(!empty($item['trailer_url'])): ?>
+                <!-- Если в базе есть ссылка, показываем плеер -->
+                <iframe width="100%" height="100%" style="min-height: 280px; display: block; border: none;" 
+                        src="<?=e($item['trailer_url'])?>" 
+                        title="Трейлер" allowfullscreen>
+                </iframe>
+            <?php else: ?>
+                <!-- Если ссылки нет, показываем заглушку -->
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 280px; background: linear-gradient(145deg,#f1f0ff,#fff);">
+                    <div class="play">▶</div>
+                    <h3 style="margin-top: 15px;">Трейлер скоро появится</h3>
+                    <p style="font-size: 12px; color: var(--muted);">Мы уже работаем над этим.</p>
+                </div>
+            <?php endif; ?>
+        </div>
+    </section>
+    
+    <!-- Похожие истории -->
+    <section class="section">
+        <div class="section-heading"><h2>Похожие истории</h2></div>
+        <div class="movie-grid"><?php foreach($related as $r) content_card($r,$pdo,$user); ?></div>
+    </section>
+    
+    <?php
+}
+require_once __DIR__ . '/includes/footer.php';
+?>

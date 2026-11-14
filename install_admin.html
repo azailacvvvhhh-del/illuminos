@@ -1,0 +1,18 @@
+<?php
+require_once __DIR__ . '/config/db.php'; // Изменен путь
+
+header('Content-Type: text/html; charset=utf-8');
+
+$email = 'admin@illuminos.local';
+$password = password_hash('Admin123!', PASSWORD_DEFAULT);
+$stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
+$stmt->execute([$email]);
+if (!$stmt->fetch()) {
+    $insert = $pdo->prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)');
+    $insert->execute(['Администратор', $email, $password, 'admin']);
+    $message = 'Администратор создан. Войдите: admin@illuminos.local / Admin123! Затем удалите install_admin.php.';
+} else {
+    $message = 'Администратор уже существует. Удалите install_admin.php с сервера.';
+}
+?><!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Illuminos installer</title></head>
+<body style="font:16px Arial;background:#090914;color:#fff;padding:40px"><?=htmlspecialchars($message, ENT_QUOTES, 'UTF-8')?></body></html>

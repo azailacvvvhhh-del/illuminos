@@ -1,0 +1,21 @@
+<?php
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/includes/content_card.php';
+$user = current_user();
+
+$stmt = $pdo->prepare("SELECT * FROM content WHERE content_type = 'series' ORDER BY rating DESC");
+$stmt->execute();
+$items = $stmt->fetchAll();
+
+require_once __DIR__ . '/includes/header.php';
+?>
+    <section class="page-head">
+        <span class="eyebrow">БИБЛИОТЕКА ILLUMINOS</span>
+        <h1>Сериалы <span>с продолжением.</span></h1>
+        <p>Истории, которые захватывают на несколько сезонов.</p>
+    </section>
+    <section class="section">
+        <div class="movie-grid"><?php foreach($items as $item) content_card($item,$pdo,$user); ?></div>
+        <?php if(!$items): ?><div class="empty-state">Ничего не найдено.</div><?php endif; ?>
+    </section>
+<?php require_once __DIR__ . '/includes/footer.php'; ?>

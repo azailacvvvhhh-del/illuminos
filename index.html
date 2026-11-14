@@ -1,0 +1,80 @@
+<?php
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/includes/content_card.php';
+$user = current_user();
+
+$featured = $pdo->query('SELECT * FROM content WHERE featured=1 ORDER BY rating DESC LIMIT 1')->fetch();
+$items = $pdo->query('SELECT * FROM content ORDER BY featured DESC, rating DESC LIMIT 8')->fetchAll();
+$genres = $pdo->query('SELECT DISTINCT genre FROM content ORDER BY genre')->fetchAll(PDO::FETCH_COLUMN);
+
+if ($user) {
+    $rec = $pdo->prepare('SELECT c.* FROM content c WHERE c.genre IN (SELECT DISTINCT fav_content.genre FROM favorites f JOIN content fav_content ON fav_content.id=f.content_id WHERE f.user_id=?) AND c.id NOT IN (SELECT content_id FROM favorites WHERE user_id=?) ORDER BY c.rating DESC LIMIT 4');
+    $rec->execute([$user['id'], $user['id']]);
+    $recommendations = $rec->fetchAll();
+} else {
+    $recommendations = array_slice($items, 0, 4);
+}
+
+require_once __DIR__ . '/includes/header.php';
+?>
+    <section class="hero">
+      <div class="hero-content">
+          <span class="eyebrow"><i></i> ТВОЯ СЛЕДУЮЩАЯ ИСТОРИЯ</span>
+          <h1>Больше, чем<br><span>просто кино.</span></h1>
+          <p>Открой мир историй, которые захватывают с первой минуты. Фильмы и сериалы в одном пространстве.</p>
+          <div class="hero-actions">
+              <a class="btn" href="movies.php">Смотреть каталог <b>↗</b></a>
+              <a class="text-link" href="payment.php">Выбрать подписку →</a>
+          </div>
+          <div class="hero-stats">
+              <div><b>4K</b><small>качество</small></div>
+              <div><b>∞</b><small>впечатлений</small></div>
+              <div><b>24/7</b><small>доступ</small></div>
+          </div>
+      </div>
+      <div class="hero-art">
+          <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+          
+          <!-- Картинка вместо фиолетовой карточки -->
+          <div class="hero-image">
+              <a href="detail.php?id=<?=(int)($featured['id'] ?? 1)?>">
+                  <img src="assets/hero.jpg" alt="<?=e($featured['title'] ?? 'Премьера')?>">
+              </a>
+          </div>
+
+          <div class="floating-tag tag-top">✦ НОВИНКА</div>
+          <div class="floating-tag tag-bottom">★ <?=e($featured['rating'] ?? '9.0')?> / 10</div>
+      </div>
+    </section>
+    
+    <section class="section">
+        <div class="section-heading">
+            <div><span class="eyebrow">ВЫБИРАЙ НАСТРОЕНИЕ</span><h2>Найди свой жанр</h2></div>
+        </div>
+        <div class="genre-list">
+            <?php foreach($genres as $g): ?>
+                <a href="search.php?genre=<?=urlencode($g)?>"><?=e($g)?><span>↗</span></a>
+            <?php endforeach; ?>
+        </div>
+    </section>
+    
+    <section class="section">
+        <div class="section-heading">
+            <div><span class="eyebrow">СЕЙЧАС СМОТРЯТ</span><h2>Популярное <span class="accent">сегодня</span></h2></div>
+            <a class="text-link" href="movies.php">Весь каталог →</a>
+        </div>
+        <div class="movie-grid"><?php foreach($items as $item) content_card($item,$pdo,$user); ?></div>
+    </section>
+    
+    <section class="section">
+        <div class="section-heading">
+            <div><span class="eyebrow">ПОДБОРКА ДЛЯ ТЕБЯ</span><h2>Рекомендуем <span class="accent">посмотреть</span></h2></div>
+        </div>
+        <div class="movie-grid"><?php foreach($recommendations as $item) content_card($item,$pdo,$user); ?></div>
+    </section>
+    
+    <section class="cta-band">
+        <div><span class="eyebrow">ТВОЙ КИНОМИР БЕЗ ГРАНИЦ</span><h2>Включай. Чувствуй.<br><span>Погружайся.</span></h2></div>
+        <a class="btn" href="payment.php">Посмотреть тарифы ↗</a>
+    </section>
+<?php require_once __DIR__ . '/includes/footer.php'; ?>

@@ -1,0 +1,44 @@
+<?php
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/includes/content_card.php';
+$user = current_user();
+
+$search = trim($_GET['q'] ?? '');
+$genre = trim($_GET['genre'] ?? '');
+$type = $_GET['type'] ?? '';
+
+$sql = 'SELECT * FROM content WHERE 1=1';
+$params = [];
+if ($search !== '') { $sql .= ' AND title LIKE ?'; $params[] = "%$search%"; }
+if ($genre !== '') { $sql .= ' AND genre = ?'; $params[] = $genre; }
+if (in_array($type,['movie','series'],true)) { $sql .= ' AND content_type = ?'; $params[] = $type; }
+$sql .= ' ORDER BY rating DESC';
+
+$stmt = $pdo->prepare($sql); $stmt->execute($params); $items = $stmt->fetchAll();
+$genres = $pdo->query('SELECT DISTINCT genre FROM content ORDER BY genre')->fetchAll(PDO::FETCH_COLUMN);
+
+require_once __DIR__ . '/includes/header.php';
+?>
+    <section class="page-head">
+        <span class="eyebrow">ПОИСК</span>
+        <h1>Открой <span>новое.</span></h1>
+        <p>Подборка историй для любого настроения.</p>
+    </section>
+    <section class="section">
+        <form class="filter-bar" method="get" action="search.php">
+            <input name="q" value="<?=e($search)?>" placeholder="Найти фильм или сериал...">
+            <select name="genre">
+                <option value="">Все жанры</option>
+                <?php foreach($genres as $g): ?><option value="<?=e($g)?>" <?=$genre===$g?'selected':''?>><?=e($g)?></option><?php endforeach; ?>
+            </select>
+            <select name="type">
+                <option value="">Всё</option>
+                <option value="movie" <?=$type==='movie'?'selected':''?>>Фильмы</option>
+                <option value="series" <?=$type==='series'?'selected':''?>>Сериалы</option>
+            </select>
+            <button class="btn btn-small">Найти</button>
+        </form>
+        <div class="movie-grid"><?php foreach($items as $item) content_card($item,$pdo,$user); ?></div>
+        <?php if(!$items): ?><div class="empty-state">Ничего не найдено. Попробуй изменить запрос.</div><?php endif; ?>
+    </section>
+<?php require_once __DIR__ . '/includes/footer.php'; ?>

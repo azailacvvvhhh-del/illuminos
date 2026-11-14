@@ -1,0 +1,36 @@
+<?php
+require_once __DIR__ . '/../config/db.php';
+$user = current_user();
+$current_page = basename($_SERVER['PHP_SELF']);
+?>
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Illuminos — кино в новом измерении</title>
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar">
+    <a class="brand" href="index.php"><span class="brand-mark">I</span> illuminos<span class="brand-dot">.</span></a>
+    <nav>
+    <a class="<?= $current_page === 'index.php' ? 'active' : '' ?>" href="index.php">Главная</a>
+    <a class="<?= $current_page === 'movies.php' ? 'active' : '' ?>" href="movies.php">Фильмы</a>
+    <a class="<?= $current_page === 'series.php' ? 'active' : '' ?>" href="series.php">Сериалы</a>
+    <!-- Добавьте эту строку: -->
+    <a class="<?= $current_page === 'search.php' ? 'active' : '' ?>" href="search.php">Поиск</a>
+    <a class="<?= $current_page === 'payment.php' ? 'active' : '' ?>" href="payment.php">Подписка</a>
+</nav>
+    <div class="top-actions">
+        <?php if($user): ?>
+            <a class="user-link" href="profile.php">◉ <?= e($user['name']) ?></a>
+            <a class="login-link" href="logout.php">Выйти</a>
+        <?php else: ?>
+            <a class="login-link" href="login.php">Войти</a>
+            <a class="btn btn-small" href="register.php">Начать</a>
+        <?php endif; ?>
+    </div>
+    
+</header>
+<main>

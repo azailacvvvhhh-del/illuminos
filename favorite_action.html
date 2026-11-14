@@ -1,0 +1,19 @@
+<?php
+require_once __DIR__ . '/config/db.php';
+require_login();
+$user = current_user();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $contentId = (int)($_POST['content_id'] ?? 0);
+    if ($contentId > 0) {
+        if (is_favorite($pdo, (int)$user['id'], $contentId)) {
+            $stmt = $pdo->prepare('DELETE FROM favorites WHERE user_id=? AND content_id=?');
+            $stmt->execute([$user['id'],$contentId]);
+        } else {
+            $stmt = $pdo->prepare('INSERT IGNORE INTO favorites (user_id,content_id) VALUES (?,?)');
+            $stmt->execute([$user['id'],$contentId]);
+        }
+    }
+}
+header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
+exit;
